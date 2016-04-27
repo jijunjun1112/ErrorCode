@@ -1,6 +1,37 @@
 from distutils.command.build_scripts import first_line_re
 First_Line=""
 ECode=""
+global LOCAL_PC_IP,LOCAL_PC_PORT
+global MEETINNG_ROOM_ID,MEETING_PASSWORD
+global VERBOSE,service_on
+VERBOSE = 0   ## is open debug log
+service_on = 1###############################################
+
+global LOOPTIMES_webAPI_errorCode
+LOOPTIMES_webAPI_errorCode = 1
+
+global invite_times,register_times,bye_times
+invite_times = 0
+register_times = 0
+bye_times=0
+
+global SIP_SERVER_IP,SIP_SERVER_PORT
+
+global XSERVER_PUBLICKEY
+XSERVER_PUBLICKEY = {}.fromkeys(('cseq_num_all'),"NONE") # every sip command vi this key to parse
+XSERVER_PUBLICKEY["cseq_num_all"] = 0
+
+SESSIONINFO = []
+LOOPTIMES_Xserver_errorCode = 1
+
+global SIP_ID_NUMBER,SIP_ID_PASSWORD,LOCAL_PC_RTP_PORT
+global INVITE_SDP
+INVITE_SDP = {}.fromkeys(("ip","port1",'port2',"port3","port4","port5"),"NONE")
+connectionlist = {}  
+g_code_length = 0 
+g_header_length = 0 
+
+# add by junjunji
 global errorCodeSystem
 errorCodeSystem={'1':('400 Bad Request','1000'),\
              '2':('400 No Message Body','1001'),\

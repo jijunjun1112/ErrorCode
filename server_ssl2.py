@@ -34,43 +34,6 @@ from projectx_base import *
 from create_sipObject import *
 from global_variables import *
 
-global LOCAL_PC_IP,LOCAL_PC_PORT
-global MEETINNG_ROOM_ID,MEETING_PASSWORD
-global VERBOSE,service_on
-VERBOSE = 0   ## is open debug log
-service_on = 1###############################################
-global APPID_FOR_WEBAPI_TEST,SECRETKEY_FOR_WEBAPI_TEST
-APPID_FOR_WEBAPI_TEST = 10004
-SECRETKEY_FOR_WEBAPI_TEST = "FE2DF5E80FDE4226957AA100CBBA627C"
-
-global LOOPTIMES_webAPI_errorCode
-LOOPTIMES_webAPI_errorCode = 1
-
-global invite_times,register_times,bye_times
-invite_times = 0
-register_times = 0
-bye_times=0
-
-global WEBAPI_KEY_URL
-global SIP_SERVER_IP,SIP_SERVER_PORT
-global is_Exception_test
-is_Exception_test = 0
-global XSERVER_PUBLICKEY,XSERVER_RESPOND
-XSERVER_PUBLICKEY = {}.fromkeys(('cseq_num_all'),"NONE") # every sip command vi this key to parse
-XSERVER_PUBLICKEY["cseq_num_all"] = 0
-XSERVER_RESPOND = {}.fromkeys(("call_id",'cseq_num','invite_to_tag_str',"body","x_gs_notify_users","x_gs_conf_control"),"NONE")
-# INVITE:INVITE_to_tag , SIPID:SIPpassword
-XSERVER_INVITE = {}
-SESSIONINFO = []
-LOOPTIMES_Xserver_errorCode = 1
-
-global SIP_ID_NUMBER,SIP_ID_PASSWORD,LOCAL_PC_RTP_PORT
-global INVITE_SDP
-INVITE_SDP = {}.fromkeys(("ip","port1",'port2',"port3","port4","port5"),"NONE")
-connectionlist = {}  
-g_code_length = 0 
-g_header_length = 0 
-
 def get_ip_address():
     localIP = socket.gethostbyname(socket.gethostname())
     return localIP
@@ -120,71 +83,7 @@ def parse_data(self,msg):
             i += 1
 #        print raw_str        
         return raw_str    
-def sendMessage(message):  
-    global connectionlist  
-    message_utf_8 = message.encode('utf-8')  
-    for connection in connectionlist.values():  
-        back_str = []  
-        back_str.append('\x81')  
-        data_length = len(message_utf_8)  
-        if data_length <= 125:  
-            back_str.append(chr(data_length))  
-        elif data_length <= 65535 :  
-            back_str.append(struct.pack('b', 126))  
-            back_str.append(struct.pack('>h', data_length))  
-            #back_str.append(chr(data_length >> 8))  
-            #back_str.append(chr(data_length & 0xFF))  
-            #a = struct.pack('>h', data_length)  
-            #b = chr(data_length >> 8)  
-            #c = chr(data_length & 0xFF)  
-        elif data_length <= (2^64-1):  
-            #back_str.append(chr(127))  
-            back_str.append(struct.pack('b', 127))  
-            back_str.append(struct.pack('>q', data_length))  
-            #back_str.append(chr(data_length >> 8))  
-            #back_str.append(chr(data_length & 0xFF))        
-        else :  
-            print "error"          
-        msg = ''  
-        for c in back_str:  
-            msg += c;  
-        back_str = str(msg)   + message_utf_8#.encode('utf-8') 
-        if back_str != None and len(back_str) > 0:    
-            connection.send(back_str)     
-def connectServer(destserver_address = "", destserver_port="" ,localip_address = "" ,local_portaddr = "" , protocol = ""):
-    global LOCAL_PC_IP,LOCAL_PC_PORT,SIP_SERVER_IP,SIP_SERVER_PORT
-    if local_portaddr == "":
-        local_portaddr = int(LOCAL_PC_PORT)
-    if not localip_address:
-        localip_address = LOCAL_PC_IP
-    if not destserver_address:
-        destserver_address = SIP_SERVER_IP
-    if not destserver_port:
-        destserver_port = int(SIP_SERVER_PORT)
-    if str(protocol).lower() == 'udp':
-        sendsock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-        sendsock.bind(('%s' % localip_address, int(local_portaddr)))
-        sendsock.settimeout(3)
-    elif str(protocol).lower() == 'ssl' or str(protocol).lower() == 'tls':
-        sendsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#        context = SSL.Context(SSL.TLSv1_METHOD)
-#        sendsock = SSL.Connection(context, sendsock)
-        dest_address = socket.getaddrinfo(destserver_address, int(destserver_port))[0][4][0]
-        try:
-            sendsock.connect((dest_address, destserver_port))
-            sendsock.do_handshake()
-        except socket.error or socket.timeout:
-            sendsock.close()
-        sendsock.settimeout(1)
-    else:
-        sendsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_address = (destserver_address, int(destserver_port))
-        try:
-            sendsock.connect(server_address)
-        except socket.error or socket.timeout:
-            sendsock.close()
-        sendsock.settimeout(1)
-    return sendsock
+
 class Websocket(threading.Thread):
     GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
     def __init__( self,conn,remote, path="/"):
@@ -272,12 +171,6 @@ class Websocket(threading.Thread):
         ECode="X-ECode: "+errorCodeSystem[str(index)][1]+"\r\n"
         
         bye_request = "BYE sip:%s@%s;rtcweb-breaker=no;click2call=no;transport=ws;+g.oma.sip-im;ovid=asdfghjkl;ov-ob=lkjhgfdsa;ri=%s;options=010 SIP/2.0\r\n"%(msg_info.sipid_number, msg_info.invalid,msg_info.local_ip_number)
-#        if msg_info.protocol == 'udp':
-#            bye_request += "Via: SIP/2.0/UDP %s:%d;branch=z9hG4bK12345678%x"%(str(msg_info.local_ip_number),int(msg_info.local_port_number), random.randint(0, 10000)) + "\r\n"
-#            bye_request += "Contact: <sip:" + str(msg_info.local_ip_number) + ":" + "%d"%int(msg_info.local_port_number) + ";transport=udp>\r\n"
-#        else:
-#            bye_request += "Via: SIP/2.0/TCP %s:%d;branch=z9hG4bK12345678%x"%(str(msg_info.local_ip_number),int(msg_info.local_port_number), random.randint(0, 10000)) + "\r\n"
-#            bye_request += "Contact: <sip:" + str(msg_info.local_ip_number) + ":" + "%d"%int(msg_info.local_port_number) + ";transport=tcp>\r\n"
         bye_request += "Via: SIP/2.0/WS %s:10080;branch=z9hG4bKyIWsI4MGBGLZaDtX4Cs9l0MVqPsFgZ;rport\r\n"%msg_info.local_ip_number
         bye_request += "To: <sip:%s@webrtc.grandstream.com>;tag=%s\r\n"%(msg_info.sipid_number,from_tag)
         bye_request += "From: <sip:%s@127.0.0.1>;tag=20150101000000\r\n"%(msg_info.meeting_id_to_user)
@@ -294,46 +187,7 @@ class Websocket(threading.Thread):
         log('info',"line%s:Say GoodBye to the girl"%sys._getframe().f_lineno)
         log('debug',"line%s:The content of the BYE:\r\n%s"%(sys._getframe().f_lineno,bye_request))
         XSERVER_PUBLICKEY["cseq_num_all"] = XSERVER_PUBLICKEY["cseq_num_all"] + 1
-    def send_INFO(self,sock,msg_info,content_of_x_gs_conf_contorl=""):
-        msg_info = self.checkAndInitData(sock, msg_info)
-        if msg_info == False:
-            self.OnError()
-        msg_info.fromtag="%x"%random.randint(0, 10000)
-        msg_info.call_id="1701338429%x@%s-%d"%(random.randint(0, 10000),self.localip,self.localport)
-        msg_info.cseq_num = XSERVER_PUBLICKEY["cseq_num_all"]
-        msg_info.msg_method = "INFO"
-        sip_request = "%s sip:%s@%s:%d SIP/2.0\r\n"%(msg_info.msg_method, msg_info.meeting_id_to_user, msg_info.dest_ip_number, msg_info.dest_port_number)
-    
-        if msg_info.protocol == 'udp':
-            sip_request += "Via: SIP/2.0/UDP %s:%d;branch=z9hG4bK12345678%x"%(msg_info.local_ip_number,msg_info.local_port_number, random.randint(0, 10000)) + "\r\n"
-            sip_request += "Contact: <sip:" + str(msg_info.local_ip_number) + ":" + "%d"%msg_info.local_port_number + ";transport=udp>\r\n"
-        else:
-            sip_request += "Via: SIP/2.0/TCP %s:%d;branch=z9hG4bK12345678%x;rport;alias"%(msg_info.local_ip_number,msg_info.local_port_number, random.randint(0, 10000)) + "\r\n"
-            sip_request += "Contact: <sip:" + str(msg_info.sipid_number) + "@" + str(msg_info.local_ip_number) + ":" + "%d"%msg_info.local_port_number + ";transport=tcp>\r\n"
 
-        if msg_info.hastotag == True:
-            sip_request += "To: <sip:%s@%s:%d>;tag=%s\r\n"%(msg_info.meeting_id_to_user, msg_info.dest_ip_number, msg_info.dest_port_number, msg_info.totag)
-        else:
-            sip_request += "To: <sip:%s@%s:%d>\r\n"%(msg_info.meeting_id_to_user, msg_info.dest_ip_number, msg_info.dest_port_number)
-    
-        sip_request += "From: <sip:%s@%s:%d>;tag=%s\r\n"%(msg_info.sipid_number, msg_info.local_ip_number, msg_info.local_port_number, msg_info.fromtag)
-        sip_request += "Call-ID: %s\r\n"%msg_info.call_id
-        sip_request += "CSeq: %d %s\r\n" %(msg_info.cseq_num, msg_info.msg_method)
-
-        if self.compare_string(msg_info.authorization_header, 'NONE') != 0:
-            sip_request += "Authorization: %s\r\n"%msg_info.authorization_header;
-        elif self.compare_string(msg_info.proxy_authorization_header, 'NONE') != 0:
-            sip_request += "Proxy-Authorization: %s\r\n"%msg_info.proxy_authorization_header;
-
-#####    added by Amandashan start
-        sip_request += "User-Agent: %s \r\n"%(msg_info.user_agent)
-        sip_request += "Max-Forwards: 70 \r\n"
-#####    added by Amandashan end
-        sip_request += "X-GS-Conf-Control: %s\r\n" % (content_of_x_gs_conf_contorl)
-        sip_request += "Content-Length: 0\r\n\r\n"
-    
-        sendMessage(sip_request)
-        XSERVER_PUBLICKEY["cseq_num_all"] = XSERVER_PUBLICKEY["cseq_num_all"] + 1
     def send_INFO_response_200(self,sock,buffer,msg_info):
         ok_response = "SIP/2.0 200 OK\r\n"
         ok_response += msg_info.via_header + "\r\n"
@@ -489,72 +343,6 @@ class Websocket(threading.Thread):
         XSERVER_PUBLICKEY["cseq_num_all"] = XSERVER_PUBLICKEY["cseq_num_all"] + 1
         return True
         
-    def send_base_request(self,sock, method_type, msg_info, param="",chat_to_users=""):
-        
-        if msg_info.dest_ip_domain_name == '' or msg_info.dest_ip_domain_name == 'NONE':
-            msg_info.dest_ip_domain_name = msg_info.dest_ip_number
-        if chat_to_users !="":
-            self.chat_to_users = chat_to_users
-
-        sock = self.localsock
-        # send SIP request to sip server
-        sip_request = "%s sip:%s@%s:%d SIP/2.0\r\n"%(method_type, msg_info.meeting_id_to_user, msg_info.dest_ip_domain_name, msg_info.dest_port_number)
-    
-        if msg_info.protocol == 'udp':
-            sip_request += "Via: SIP/2.0/UDP %s:%d;branch=z9hG4bK12345678%x"%(str(msg_info.local_ip_number).upper(),msg_info.local_port_number, random.randint(0, 10000)) + "\r\n"
-            sip_request += "Contact: <sip:" + msg_info.local_ip_number + ":" + "%d"%msg_info.local_port_number + ";transport=udp>\r\n"
-        else:
-            sip_request += "Via: SIP/2.0/%s %s:%d;branch=z9hG4bK12345678%x;rport;alias"%(str(msg_info.protocol).upper(), msg_info.local_ip_number,msg_info.local_port_number, random.randint(0, 10000)) + "\r\n"
-            sip_request += "Contact: <sip:" + str(msg_info.sipid_number) + "@" + str(msg_info.local_ip_number) + ":" + str("%d"%msg_info.local_port_number) + ";transport=" + str(msg_info.protocol).upper() + ">\r\n"    
-        sip_request += "From: <sip:%s@%s:%d>;tag=%s\r\n"%(msg_info.sipid_number, msg_info.dest_ip_domain_name, msg_info.dest_port_number, msg_info.fromtag)
-
-
-        if msg_info.statusCode == 401:
-            sip_request += "To: <sip:%s@%s:%d>\r\n"%(msg_info.meeting_id_to_user, msg_info.dest_ip_domain_name, msg_info.dest_port_number)
-            sip_request += "Authorization: %s\r\n"%msg_info.authorization_header;
-        elif msg_info.statusCode == 407:
-            sip_request += "To: <sip:%s@%s:%d>\r\n"%(msg_info.meeting_id_to_user, msg_info.dest_ip_domain_name, msg_info.dest_port_number)
-            sip_request += "Proxy-Authorization: %s\r\n"%msg_info.proxy_authorization_header;
-        elif msg_info.hastotag == True:
-            sip_request += "To: <sip:%s@%s:%d>;tag=%s\r\n"%(msg_info.meeting_id_to_user, msg_info.dest_ip_domain_name, msg_info.dest_port_number, msg_info.totag)
-        else:
-            sip_request += "To: <sip:%s@%s:%d>\r\n"%(msg_info.meeting_id_to_user, msg_info.dest_ip_domain_name, msg_info.dest_port_number)
-        sip_request += "Call-ID: %s\r\n"%msg_info.call_id
-        sip_request += "Allow: INVITE, ACK, OPTIONS, CANCEL, BYE, SUBSCRIBE, NOTIFY, INFO, REFER, UPDATE, MESSAGE\r\n"
-        sip_request += "User-Agent: %s\r\n" % msg_info.user_agent
-        sip_request += "Supported: path\r\n"
-        sip_request += "Max-Forwards: 70\r\n"
-        sip_request += "CSeq: %d %s\r\n" %(msg_info.cseq_num, method_type)
-
-        if self.compare_string(method_type, 'MESSAGE') == 0:
-            sip_request += "X-GS-Message-Users: %s\r\n"%(chat_to_users)
-            sip_request += "User-Agent: %s  N/A\r\n"%(msg_info.user_agent)
-            sip_request += "Content-Type: text/plain;charset=utf-8\r\n"
-            sip_request += "Content-Length: %d\r\n\r\n"%(len(str(param)))
-            sip_request += str(param)
-        elif self.compare_string(method_type, 'INFO') == 0:
-    #####    added by Amandashan start
-            sip_request += "User-Agent: %s \r\n"%(msg_info.user_agent)
-            sip_request += "Max-Forwards: 70 \r\n"
-    #####    added by Amandashan end
-            sip_request += "X-GS-Conf-Control: %s\r\n"%msg_info.x_gs_conf_control
-            sip_request += "Content-Length: 0\r\n\r\n"
-        elif self.compare_string(method_type, 'NOTIFY') == 0:
-            xml_text = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<conference-info refresh=\"218\" entity=\"10000\" state=\"partial\" version=\"1\">\r\n<users><user entity=\"1000\" state=\"partial\" mute=\"0\"/>\r\n</users>\r\n</conference-info>"
-            xml_text = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<conference-info %s />\r\n</users>\r\n</conference-info>" % (param)
-            sip_request += "X-GS-Notify-Users: all\r\n"
-            sip_request += "Content-Type: application/conference-info+xml\r\n"
-            sip_request += "Event: X-GS-CONFERENCE\r\n"
-            sip_request += "Content-Length: %d\r\n\r\n"%(len(xml_text))
-            sip_request += xml_text
-        elif self.compare_string(method_type, 'REGISTER') == 0:
-            sip_request += "Expires: 3600\r\n"
-            sip_request += "Content-Length: 0\r\n\r\n"
-        else:
-            sip_request += "Content-Length: 0\r\n\r\n"
-        self.sendMessage(sip_request)
-        XSERVER_PUBLICKEY["cseq_num_all"] = XSERVER_PUBLICKEY["cseq_num_all"] + 1
-
     def send_register_response_200(self,sock, buffer, msg_info): 
         ok_response = "SIP/2.0 200 OK\r\n"
         ok_response += msg_info.via_header + "\r\n"
@@ -581,29 +369,7 @@ class Websocket(threading.Thread):
         log('debug',"line%s:The content of the 200OK:\r\n%s"%(sys._getframe().f_lineno,ok_response))
         XSERVER_PUBLICKEY["cseq_num_all"] = XSERVER_PUBLICKEY["cseq_num_all"] + 1
         return True
-    def send_Unknown_request_response_404(self,sock, buffer, msg_info):
-        ok_response = "SIP/2.0 404 Not Found\r\n"
-        ok_response += msg_info.via_header + "\r\n"
-        if self.compare_string(msg_info.snd_via_header, 'NONE') != 0:
-            ok_response += msg_info.snd_via_header + "\r\n"
-    
-        ok_response += "Max-Forwards: 70\r\nUser-Agent: python(IPC)\r\n"
-        if msg_info.hastotag == True:
-            ok_response += "To:%s"%msg_info.to_header + "\r\n"
-        else:
-            ok_response += "To:%s"%msg_info.to_header + ";tag=201203271"+"\r\n"
-    
-            msg_info.totag = "201203271"
-        ok_response += "From:%s"%msg_info.from_header + "\r\n"
-        ok_response += "Call-ID: %s\r\n" % msg_info.call_id
-        ok_response += "CSeq: %s\r\n" %msg_info.cseq
-        expiresindex1 = msg_info.expires_header.find('NONE')
-        if expiresindex1 == -1:
-            ok_response += "%s\r\n"%msg_info.expires_header
-        ok_response += "Content-Length: 0\r\n\r\n"
-        sendMessage(ok_response)
-        XSERVER_PUBLICKEY["cseq_num_all"] = XSERVER_PUBLICKEY["cseq_num_all"] + 1
-        return True
+
     def send_response_errorcode(self,sock, buffer, msg_info):
 #         ok_response = "SIP/2.0 403 Forbidden\r\n"      
         ok_response = "SIP/2.0 480 All Occupied\r\n" 
@@ -665,7 +431,7 @@ class Websocket(threading.Thread):
         ack_request += "Call-ID: %s\r\n" % msg_info.call_id
         ack_request += "CSeq: %d ACK\r\n" %msg_info.cseq_num
         ack_request += "Content-Length: 0\r\n\r\n"
-        sendMessage(ack_request)
+        self.sendMessage(ack_request)
         log('info',"line%s:Send ACK to the 200OK"%sys._getframe().f_lineno)
         logging.debug("The content of the ACK:\r\n%s"%ack_request)
         XSERVER_PUBLICKEY["cseq_num_all"] = XSERVER_PUBLICKEY["cseq_num_all"] + 1
@@ -729,47 +495,9 @@ class Websocket(threading.Thread):
         invite_request += "Accept: application/sdp, application/dtmf-relay\r\n"
         invite_request += "Content-Length: %d\r\n\r\n"%(len(sdp_content))
         invite_request += sdp_content
-        sendMessage(invite_request)           
+        self.sendMessage(invite_request)           
         XSERVER_PUBLICKEY["cseq_num_all"] = XSERVER_PUBLICKEY["cseq_num_all"] + 1
 
-    def calc_auth_response(self,realm, username, password, method, ruri, nonce ):
-        ha1 = md5.new()
-        ha1.update(username)
-        ha1.update(":")
-        ha1.update(realm)
-        ha1.update(":")
-        ha1.update(str(password))
-        ha1_string = ha1.hexdigest()
-    
-        print "%s,%s,%s,%s"%(username, realm, str(password), ha1_string)
-    
-        ha2 = md5.new()
-        ha2.update(method)
-        ha2.update(":")
-        ha2.update(ruri)
-        ha2_string = ha2.hexdigest()
-    
-        response = md5.new()
-        response.update(ha1_string)
-        response.update(":")
-        response.update(nonce)
-        response.update(":")
-        response.update(ha2_string)
-        return response.hexdigest()
-
-    def create_authorization(self,msg_info):
-        response_string = self.calc_auth_response(msg_info.realm, msg_info.sipid_number, msg_info.sipid_password, msg_info.msg_method, msg_info.ruri, msg_info.nonce )
-        print "Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"%s\", response=\"%s\", algorithm=MD5"%(msg_info.sipid_number,msg_info.realm,msg_info.nonce,msg_info.ruri,response_string) 
-        return "Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"%s\", response=\"%s\", algorithm=MD5"%(msg_info.sipid_number,msg_info.realm,msg_info.nonce,msg_info.ruri,response_string)
-
-###########################
-####Author:chfshan
-####analysis sip message, get and set data to class create_sipObject's every varabile
-####parameter:
-####text: the text data of sip message
-####return:
-####class create by create_sipObject
-########################### 
     def parse(self,text):
         """Parses the incoming SUBSCRIBE."""
         try:
@@ -1187,50 +915,7 @@ class Websocket(threading.Thread):
                 break    
         
         return 0
-
-###########################
-####Author:chfshan
-####create socket and start received thread
-####parameter:
-####
-####return
-####
-###########################
-    def initClient(self):
-        self.localsock = connectServer(self.dest_address, self.dest_port, self.localip, self.localport,self.protocol)
-        msg_info = self.checkAndInitData(self.localsock, self.object)
-        if msg_info == False :
-            self.OnError()
-    def set(self,msg_info,section,data):
-        global SESSIONINFO
-        for i in range(0,len(SESSIONINFO)):
-            if SESSIONINFO[i]['fromuser'] == msg_info.sipid_number:
-                if SESSIONINFO[i].has_key(section):
-                    SESSIONINFO[i][section] = data
-                else:
-                    return False
-    def get(self,msg_info,section):
-        global SESSIONINFO
-        for i in range(0,len(SESSIONINFO)):
-            if SESSIONINFO[i]['fromuser'] == msg_info.sipid_number:
-                if SESSIONINFO[i].has_key(section):
-                    return SESSIONINFO[i][section]
-                else:
-                    return False
-
-    def getINFOactionData(self,data):
-        if data:
-            a = str(data).split(";")
-            for i in a:
-                if str(a[i]).find("action") != -1:
-                    print ("getINFOactionData,result = %s" % a[i][7:])
-                    return a[i][7:]
                 
-    def getMeetingIDAndPW(self,sock,msg_info):
-        
-        meetinginfo = msg_info.meeting_id_to_user
-#         str(meetinginfo).find(*)
-
     def send_Nofity(self,sock,msg_info,flag=0):
 #        if msg_info.rtp_media_port == "":
 #            msg_info.rtp_media_port = self.rtp_port
@@ -1382,20 +1067,8 @@ class Websocket(threading.Thread):
         invite_request += "X-GS-SERVER-ID: %s \r\n"%(msg_info.local_ip_number)
         invite_request += "Content-Length: %d\r\n\r\n"%(len(sdp_content))
 
-        
         invite_request += sdp_content
-        
         self.sendMessage(invite_request)
-        
-#         if msg_info.protocol == 'udp':
-#             sock.sendto(invite_request, (msg_info.dest_ip_number, msg_info.dest_port_number))
-#         else:
-#             try:
-#                 sock.sendall(invite_request)
-#             except Exception as e:
-#                 log('error',"send request %s  failed,socket connect failed: %s(send_INVITE)") % (msg_info.call_id,str(e))
-#                 self.OnError()
-            
         XSERVER_PUBLICKEY["cseq_num_all"] = XSERVER_PUBLICKEY["cseq_num_all"] + 1
 
     def send_av_stop_invite(self,sock,msg_info):
@@ -1493,142 +1166,100 @@ class Websocket(threading.Thread):
         service_msg.dest_ip_number = self.dest_address
         service_msg.dest_port_number = self.dest_port
         if service_msg.msg_isReq:
-                    log('info',"line%s:Receive %s request"%(sys._getframe().f_lineno,service_msg.msg_method))
-                    log('debug',"line%s:The content of the %s:\r\n%s"%(sys._getframe().f_lineno,service_msg.msg_method,data))                
-                    if str(service_msg.msg_method).lower() == "invite":
-                        
-#                         invite_times =invite_times+1
-#                         log('info', "line%s:*****invite_times=%s*****"%(sys._getframe().f_lineno,invite_times))   
-#                         if invite_times<=27 and invite_times>=2: 
-#                             self.send_response_error(self.localsock, service_msg,invite_times,'invite')
-#                             return 
-                        
-                        if service_msg.totag == True:
-                            self.infoReceivedTime = 0
-                            
-#                         self.send_response_errorcode(self.localsock,None, service_msg)
+            log('info',"line%s:Receive %s request"%(sys._getframe().f_lineno,service_msg.msg_method))
+            log('debug',"line%s:The content of the %s:\r\n%s"%(sys._getframe().f_lineno,service_msg.msg_method,data))                
+            if str(service_msg.msg_method).lower() == "invite":                       
+                
+                if service_msg.totag == True:
+                    self.infoReceivedTime = 0
+                    
+                self.send_INVITE_response_200(self.localsock, service_msg)
+                
+                for i in range(0,0):
+                    if self.join_flag==0:
                         self.send_INVITE_response_200(self.localsock, service_msg)
-                        
-                        for i in range(0,0):
-                            if self.join_flag==0:
-                                self.send_INVITE_response_200(self.localsock, service_msg)
-                            else:
-                                self.send_response_errorcode(self.localsock,None, service_msg)
+                    else:
+                        self.send_response_errorcode(self.localsock,None, service_msg)
 #                        if self.join_flag==0:
 #                            self.send_Nofity(self.localsock,service_msg,1)
 #                            self.join_flag=1
-                        from_tag=service_msg.fromtag
-                        call_id=service_msg.call_id
-                        to_tag=service_msg.totag
-#                        self.send_response_errorcode(self.localsock,None, service_msg)
-                        self.av_invite_totag = service_msg.fromtag
-                        self.call_id = service_msg.call_id
-                    elif str(service_msg.msg_method).lower() == "ack":
-                        bye_times=bye_times+1
-                        if bye_times>=2 and bye_times<=13:
-                            self.send_BYE(self.localsock, service_msg,bye_times+46)
-                            return
-                        
-                        if self.join_flag==0:
-                            self.send_Nofity(self.localsock,service_msg,1)
-                            log('info',"Join meeting success")
-                            self.join_flag=1
-                        else:
-                            log('info',"Session timer success")
-                    elif str(service_msg.msg_method).lower() == "info":
-                        
-                        self.info_times =self.info_times+1
-                        
-                        if (self.info_times>=3 and self.info_times<=30) or (self.info_times>=34 and self.info_times<=49) or (self.info_times==62): 
-                            self.send_response_error(self.localsock,service_msg,self.info_times-2)
-                            return 
-#                        self.send_INFO_response_200(self.localsock,None, service_msg)
+                from_tag=service_msg.fromtag
+                call_id=service_msg.call_id
+                to_tag=service_msg.totag
+                self.av_invite_totag = service_msg.fromtag
+                self.call_id = service_msg.call_id
+                
+            elif str(service_msg.msg_method).lower() == "ack":
+                bye_times=bye_times+1
+                if bye_times>=2 and bye_times<=13:
+                    self.send_BYE(self.localsock, service_msg,bye_times+46)
+                    return
+                
+                if self.join_flag==0:
+                    self.send_Nofity(self.localsock,service_msg,1)
+                    log('info',"Join meeting success")
+                    self.join_flag=1
+                else:
+                    log('info',"Session timer success")
+            elif str(service_msg.msg_method).lower() == "info":
+                
+                self.info_times =self.info_times+1
+                
+                if (self.info_times>=3 and self.info_times<=30) or (self.info_times>=34 and self.info_times<=49) or (self.info_times==62): 
+                    self.send_response_error(self.localsock,service_msg,self.info_times-2)
+                    return 
+                
+#                 self.send_INFO_response_200(self.localsock,None, service_msg)
 
-                        if str(str(service_msg.x_gs_conf_control).find("ctrl_present")) != "-1":
-                            self.handle_Unknown_request(self.localsock,None, service_msg)
-                            if str(str(service_msg.x_gs_conf_control).find("present-status=1")) != "-1":
-                                self.send_av_invite(self.localsock,service_msg)
-                                self.send_Nofity(self.localsock,service_msg,2)
-                            else:
-                                self.send_av_stop_invite(self.localsock,service_msg)
-                                self.send_Nofity(self.localsock,service_msg,3)
-                        elif str(str(service_msg.x_gs_conf_control).find("get_all_users")) != "-1":
-                            log('debug',"line%s:send response to the INFO"%sys._getframe().f_lineno)
-                            self.send_INFO_response_200(self.localsock,None, service_msg)
-                            time.sleep(0.5)
-                            if self.getalltime==1:
-                                self.send_Nofity(self.localsock,service_msg,0)
-#                                 self.send_av_invite(self.localsock, service_msg)
-#                                time.sleep(5)
-#                                self.send_BYE(self.localsock,service_msg)
-#                                 self.send_INFO_response_400(self.localsock,service_msg)
-                                self.getalltime +=1
-                            else:
-                                self.send_Nofity(self.localsock, service_msg, 7)
-                        
-                        elif str(str(service_msg.x_gs_conf_control).find("mute")) != "-1":
-                            self.send_INFO_response_200(self.localsock,None, service_msg)
-#                             self.send_INFO_response_400(self.localsock,service_msg)
-#                            time.sleep(10)
-#                            self.send_response_errorcode(self.localsock,None, service_msg)                   
-                            if str(str(service_msg.x_gs_conf_control).find("mute-status=1")) != "-1":
-                                self.send_Nofity(self.localsock,service_msg,4)
-                            else:
-                                self.send_Nofity(self.localsock,service_msg,8)
-                                time.sleep(3)
-                                self.send_Nofity(self.localsock, service_msg, 5)
-                                time.sleep(3)
-                                self.send_Nofity(self.localsock, service_msg, 3)
-                                time.sleep(3)
-#                                 self.send_invite(self.localsock, service_msg)
-                    
-                            
-                        else:
-                            print "hello"
-                            self.send_INFO_response_200(self.localsock,None, service_msg)
-                 #           self.send_Nofity(self.localsock,service_msg)
-                        
-                    elif str(service_msg.msg_method).lower() == "message":  
-#                         self.handle_Unknown_request(self.localsock,None, service_msg)
-#                         self.send_base_request(self.localsock, "MESSAGE", service_msg, "babababab", "all")
-
-#                         self.message_times=self.message_times+1
-#                         log('info', "line%s:*****message_times=%s*****"%(sys._getframe().f_lineno,self.message_times))
-#                         if self.message_times<=7 and self.message_times>=2: 
-#                             self.send_response_error(self.localsock,service_msg,self.message_times,'message')
-#                             return 
-#                         
-#                         if self.message_times==8:
-#                             self.send_BYE(self.localsock,service_msg)
-#                             return 
-                        
-                        self.send_BYE(self.localsock,service_msg)
-                        return
-#                         self.send_MESSAGE_response_200(self.localsock,service_msg)
-                        
-                        
-                    elif str(service_msg.msg_method).lower() == "register":
-#                         register_times=register_times+1
-#                         log('info', "line%s:*****register_times=%s*****"%(sys._getframe().f_lineno,register_times))
-#                         if register_times>=2 and register_times<=5:
-#                             self.send_response_error(self.localsock,service_msg,register_times,'register')
-#                             time.sleep(5)
-#                             return 
-                        
-                        self.send_register_response_200(self.localsock,None, service_msg)
-#                        self.send_response_errorcode(self.localsock,None, service_msg)
-                        for i in range(0,0):
-                            if self.join_flag ==0:
-                                self.send_register_response_200(self.localsock,None, service_msg)
-                            else:
-                                self.send_response_errorcode(self.localsock,None, service_msg)
-                    elif str(service_msg.msg_method).lower() == "bye":
-                        log('info',"line%s:The girl leaves the meeting"%sys._getframe().f_lineno)
-                        
+                if str(str(service_msg.x_gs_conf_control).find("ctrl_present")) != "-1":
+                    if str(str(service_msg.x_gs_conf_control).find("present-status=1")) != "-1":
+                        self.send_av_invite(self.localsock,service_msg)
+                        self.send_Nofity(self.localsock,service_msg,2)
                     else:
-                        if str(service_msg.msg_method).lower() == "invite":
-                            if service_msg.statusCode == 200:
-                                self.send_ACK_request(self.localsock, service_msg)
+                        self.send_av_stop_invite(self.localsock,service_msg)
+                        self.send_Nofity(self.localsock,service_msg,3)
+                        
+                elif str(str(service_msg.x_gs_conf_control).find("get_all_users")) != "-1":
+                    log('debug',"line%s:send response to the INFO"%sys._getframe().f_lineno)
+                    self.send_INFO_response_200(self.localsock,None, service_msg)
+                    time.sleep(0.5)
+                    if self.getalltime==1:
+                        self.send_Nofity(self.localsock,service_msg,0)
+#                         self.send_av_invite(self.localsock, service_msg)
+                        self.getalltime +=1
+                    else:
+                        self.send_Nofity(self.localsock, service_msg, 7)
+                
+                elif str(str(service_msg.x_gs_conf_control).find("mute")) != "-1":
+                    self.send_INFO_response_200(self.localsock,None, service_msg)
+                    if str(str(service_msg.x_gs_conf_control).find("mute-status=1")) != "-1":
+                        self.send_Nofity(self.localsock,service_msg,4)
+                    else:
+                        self.send_Nofity(self.localsock,service_msg,8)
+                        time.sleep(3)
+                        self.send_Nofity(self.localsock, service_msg, 5)
+                        time.sleep(3)
+                        self.send_Nofity(self.localsock, service_msg, 3)
+                        time.sleep(3)
+                    
+                else:
+                    print "hello"
+                    self.send_INFO_response_200(self.localsock,None, service_msg)
+         #           self.send_Nofity(self.localsock,service_msg)
+                
+            elif str(service_msg.msg_method).lower() == "message":  
+                self.send_MESSAGE_response_200(self.localsock,service_msg)
+                
+            elif str(service_msg.msg_method).lower() == "register":
+                self.send_register_response_200(self.localsock,None, service_msg)
+
+            elif str(service_msg.msg_method).lower() == "bye":
+                log('info',"line%s:The girl leaves the meeting"%sys._getframe().f_lineno)
+                
+            else:
+                if str(service_msg.msg_method).lower() == "invite":
+                    if service_msg.statusCode == 200:
+                        self.send_ACK_request(self.localsock, service_msg)
         else:
             log('info',"line%s:Receive %s response for %s"%(sys._getframe().f_lineno,service_msg.statusCode,service_msg.msg_method))
             log('debug',"line%s:Response content:\r\n%s"%(sys._getframe().f_lineno,data))
@@ -1681,20 +1312,6 @@ class Websocket(threading.Thread):
                     self.buffer_utf8 = parse_data(self,self.buffer) #utf8                  
                     msg_unicode = str(self.buffer_utf8).decode('utf-8', 'ignore') 
                     self.parseReceivedData(msg_unicode,self.sipMethod)
-#                    a=msg_unicode.split('\r\n')
-#                    b=a[0]
-#                    c=b.split('/')
-#                    print c[0]
-#                    print msg_unicode
-#                    if msg_unicode=='quit':  
-#                        log('info',"line%s:Socket%s Logout!"%(sys._getframe().f_lineno,self.index)) 
-#                        message="helloworld" 
-#                        sendMessage('%s' %message)                        
-#                        deleteconnection(str(self.index))  
-#                        self.conn.close()  
-#                        break #??????  
-#                    else:  
-#                        continue
                     self.buffer_utf8 = ""  
                     self.buffer = ""  
                     g_code_length = 0  
@@ -1837,47 +1454,7 @@ class C0005_ErrorCode_Xserver_ForPC(projectx_base):
     def OnRun(self):
         a = WebSocketServer(self.sipMethod,self.testnum,self.role)
         a.begin()
-class runCase():
-    def __init__(self,pythonExeDir):
-        if pythonExeDir != 'python':
-            if not os.path.exists(pythonExeDir):
-                sys.exit(1)
-        self.runEXE = pythonExeDir
-        self.path = os.path.abspath(os.curdir)
-#         self.path = os.path.abspath(currentPath + '..\..\..\..\TestCases\projectX')
 
-    def cycleRun(self):
-        r=re.compile("M\d{2,}") #match the path
-        pathlist=[]
-        for temp in os.listdir(self.path):
-            if r.search(temp) is not None:
-                tpath=os.path.join(self.path,temp)
-                if os.path.exists(tpath):
-                    pathlist.append(tpath)
-#                 sys.exit(1)
-        if len(pathlist) <= 0:
-            print ("no test cases need run, please check the filename,should be :MXX")
-            sys.exit(1)
-        print "Script will run these cases:\n%s "%(pathlist)
-        print "please chooise if or not to run them[y/n]:"
-        ok=raw_input()
-        if ok in ('y','ye','yes'): 
-            print "start to tun"
-        elif ok in ('n','no','nop','nope'): sys.exit(1)
-        else: raise IOError,'bad input! exit' 
-        for case in pathlist:
-            print case
-            timetmpstart = time.strftime("%Y-%m-%d %H:%M:%S",time.gmtime( time.time()-5 )) 
-            print "the case %s start time is %s" % (case,timetmpstart)
-            cmd = "%s %s" % (self.runEXE,case)
-            print cmd
-            p = subprocess.Popen(cmd,shell=False)
-            p.wait()
-            if p.returncode != 0:
-                print "Error."
-                return -1  
-            log = p.communicate()
-            print log
 if __name__ == '__main__':
     signal.signal(signal.SIGINT, myhandle)
     SIP_SERVER_IP = ""
